@@ -8,27 +8,56 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>🍬 Candy Crush</h1>
-            <div class="stats">
-                <div class="stat-item">
-                    <span class="stat-label">Score:</span>
-                    <span class="stat-value" id="score">0</span>
+        <!-- Play/Start Screen -->
+        <div class="screen" id="playScreen">
+            <div class="screen-content">
+                <h1>🍬 Candy Crush</h1>
+                <div class="game-info">
+                    <h2>Match-3 Puzzle Game</h2>
+                    <div class="instructions">
+                        <p><strong>How to Play:</strong></p>
+                        <ul>
+                            <li>Click two adjacent tiles to swap them</li>
+                            <li>Match 3 or more tiles of the same color</li>
+                            <li>🎯 Goal: Reach 500 points</li>
+                            <li>⏱️ You have 20 moves</li>
+                        </ul>
+                        <p><strong>Special Tiles:</strong></p>
+                        <ul>
+                            <li>💣 <strong>Bomb (T-shape):</strong> Clears a 3x3 area</li>
+                            <li>⚡ <strong>Laser (4 in a row):</strong> Clears entire row & column</li>
+                            <li>🍪 <strong>Cookie (5 in a row):</strong> Clears all tiles of that color</li>
+                        </ul>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">Moves:</span>
-                    <span class="stat-value" id="moves">20</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Goal:</span>
-                    <span class="stat-value" id="goal">500</span>
-                </div>
+                <button class="btn-play" onclick="game.startGame()">Start Game</button>
             </div>
-        </header>
+        </div>
 
-        <main>
-            <canvas id="gameCanvas" width="600" height="600"></canvas>
-        </main>
+        <!-- Game Area -->
+        <div id="gameArea">
+            <header>
+                <h1>🍬 Candy Crush</h1>
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Score:</span>
+                        <span class="stat-value" id="score">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Moves:</span>
+                        <span class="stat-value" id="moves">20</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Goal:</span>
+                        <span class="stat-value" id="goal">500</span>
+                    </div>
+                </div>
+            </header>
+
+            <main>
+                <canvas id="gameCanvas" width="600" height="600"></canvas>
+            </main>
+        </div>
 
         <!-- Win Screen -->
         <div class="screen" id="winScreen">
