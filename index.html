@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candy Crush - Match-3 Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍬 Candy Crush</h1>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Score:</span>
+                    <span class="stat-value" id="score">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Moves:</span>
+                    <span class="stat-value" id="moves">20</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Goal:</span>
+                    <span class="stat-value" id="goal">500</span>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <canvas id="gameCanvas" width="600" height="600"></canvas>
+        </main>
+
+        <!-- Win Screen -->
+        <div class="screen" id="winScreen">
+            <div class="screen-content">
+                <h2>🎉 You Won!</h2>
+                <p>Congratulations! You reached the goal!</p>
+                <p class="final-score">Final Score: <span id="winScore">0</span></p>
+                <button class="btn-play-again" onclick="game.reset()">Play Again</button>
+            </div>
+        </div>
+
+        <!-- Lose Screen -->
+        <div class="screen" id="loseScreen">
+            <div class="screen-content">
+                <h2>😢 Game Over</h2>
+                <p>You ran out of moves!</p>
+                <p class="final-score">Final Score: <span id="loseScore">0</span></p>
+                <button class="btn-play-again" onclick="game.reset()">Try Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
