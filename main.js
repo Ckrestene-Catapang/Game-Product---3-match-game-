@@ -293,13 +293,20 @@ function activateSpecialTiles(matchedTiles) {
  */
 function collapseGrid(clearedTiles) {
     for (let col = 0; col < CONFIG.gridSize; col++) {
-        let writePos = CONFIG.gridSize - 1;
+        // First, mark cleared tiles as null
+        for (let row = 0; row < CONFIG.gridSize; row++) {
+            if (clearedTiles.has(`${row},${col}`)) {
+                setTile(row, col, null);
+            }
+        }
         
-        // Move tiles down from bottom to top
+        // Then, compact non-null tiles downward
+        let writePos = CONFIG.gridSize - 1;
         for (let row = CONFIG.gridSize - 1; row >= 0; row--) {
-            if (!clearedTiles.has(`${row},${col}`)) {
+            const tile = getTile(row, col);
+            if (tile !== null) {
                 if (row !== writePos) {
-                    setTile(writePos, col, getTile(row, col));
+                    setTile(writePos, col, tile);
                     setTile(row, col, null);
                 }
                 writePos--;
@@ -340,15 +347,20 @@ function processMatches() {
             matchesFound = false;
         } else {
             cascades++;
-            matched.forEach(pos => totalCleared.add(pos));
+            
+            // Create a set of only this cascade's cleared tiles
+            const cascadeCleared = new Set(matched);
             
             // Activate special tiles
             const specialCleared = activateSpecialTiles(matched);
-            specialCleared.forEach(pos => totalCleared.add(pos));
+            specialCleared.forEach(pos => cascadeCleared.add(pos));
             
-            // Collapse and refill
-            collapseGrid(totalCleared);
+            // Collapse and refill with only this cascade's tiles
+            collapseGrid(cascadeCleared);
             refillGrid();
+            
+            // Add to total for scoring
+            cascadeCleared.forEach(pos => totalCleared.add(pos));
         }
     }
     
