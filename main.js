@@ -719,3 +719,4 @@ window.addEventListener('DOMContentLoaded', () => {
     console.log('🎮 Match-3 Game Ready! Click tiles to swap and make matches.');
     console.log('📋 Configuration:', CONFIG);
 });
+
