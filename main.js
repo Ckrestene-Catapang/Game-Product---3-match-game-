@@ -47,7 +47,8 @@ const gameState = {
     moves: CONFIG.initialMoves,
     gameOver: false,
     animating: false,
-    selectedTile: null
+    selectedTile: null,
+    gameMode: 'menu' // menu, playing, win, lose
 };
 
 // ============================================
@@ -142,48 +143,139 @@ function initializeGrid() {
 }
 
 // ============================================
-// MATCH DETECTION
+// MATCH DETECTION & SPECIAL TILE CREATION
 // ============================================
 
 /**
- * Find all tiles that are part of a match
+ * Find all tiles that are part of a match and create special tiles
  */
 function findMatches() {
     const matched = new Set();
+    const specialTilesToCreate = []; // Array of {row, col, type}
     
     // Check horizontal matches
     for (let row = 0; row < CONFIG.gridSize; row++) {
-        for (let col = 0; col < CONFIG.gridSize - 2; col++) {
-            const tile1 = getTile(row, col);
-            const tile2 = getTile(row, col + 1);
-            const tile3 = getTile(row, col + 2);
+        for (let col = 0; col < CONFIG.gridSize; col++) {
+            const tile = getTile(row, col);
+            if (!tile) continue;
             
-            if (tile1 && tile2 && tile3 &&
-                tile1.color.name === tile2.color.name &&
-                tile2.color.name === tile3.color.name) {
-                matched.add(`${row},${col}`);
-                matched.add(`${row},${col + 1}`);
-                matched.add(`${row},${col + 2}`);
+            // Count consecutive tiles horizontally
+            let matchCount = 1;
+            for (let c = col + 1; c < CONFIG.gridSize; c++) {
+                const nextTile = getTile(row, c);
+                if (nextTile && nextTile.color.name === tile.color.name) {
+                    matchCount++;
+                } else {
+                    break;
+                }
+            }
+            
+            // Process horizontal matches
+            if (matchCount >= 3) {
+                for (let c = col; c < col + matchCount; c++) {
+                    matched.add(`${row},${c}`);
+                }
+                
+                // Create special tiles based on match count
+                if (matchCount === 4) {
+                    // 4 in a row = Laser
+                    specialTilesToCreate.push({ row, col, count: matchCount, type: 'laser' });
+                } else if (matchCount >= 5) {
+                    // 5+ in a row = Cookie
+                    specialTilesToCreate.push({ row, col, count: matchCount, type: 'cookie' });
+                }
             }
         }
     }
     
     // Check vertical matches
     for (let col = 0; col < CONFIG.gridSize; col++) {
-        for (let row = 0; row < CONFIG.gridSize - 2; row++) {
-            const tile1 = getTile(row, col);
-            const tile2 = getTile(row + 1, col);
-            const tile3 = getTile(row + 2, col);
+        for (let row = 0; row < CONFIG.gridSize; row++) {
+            const tile = getTile(row, col);
+            if (!tile) continue;
             
-            if (tile1 && tile2 && tile3 &&
-                tile1.color.name === tile2.color.name &&
-                tile2.color.name === tile3.color.name) {
-                matched.add(`${row},${col}`);
-                matched.add(`${row + 1},${col}`);
-                matched.add(`${row + 2},${col}`);
+            // Count consecutive tiles vertically
+            let matchCount = 1;
+            for (let r = row + 1; r < CONFIG.gridSize; r++) {
+                const nextTile = getTile(r, col);
+                if (nextTile && nextTile.color.name === tile.color.name) {
+                    matchCount++;
+                } else {
+                    break;
+                }
+            }
+            
+            // Process vertical matches
+            if (matchCount >= 3) {
+                for (let r = row; r < row + matchCount; r++) {
+                    matched.add(`${row},${col}`);
+                }
+                
+                // Create special tiles based on match count
+                if (matchCount === 4) {
+                    // 4 in a row = Laser
+                    specialTilesToCreate.push({ row, col, count: matchCount, type: 'laser' });
+                } else if (matchCount >= 5) {
+                    // 5+ in a row = Cookie
+                    specialTilesToCreate.push({ row, col, count: matchCount, type: 'cookie' });
+                }
             }
         }
     }
+    
+    // Check for T-shaped patterns (bomb)
+    for (let row = 1; row < CONFIG.gridSize - 1; row++) {
+        for (let col = 1; col < CONFIG.gridSize - 1; col++) {
+            const center = getTile(row, col);
+            if (!center || matched.has(`${row},${col}`)) continue;
+            
+            // Vertical T (|)
+            const top = getTile(row - 1, col);
+            const bottom = getTile(row + 1, col);
+            const left = getTile(row, col - 1);
+            const right = getTile(row, col + 1);
+            
+            // Vertical T: center + top + bottom + (left or right)
+            if (top && bottom && (left || right) &&
+                top.color.name === center.color.name &&
+                bottom.color.name === center.color.name &&
+                ((left && left.color.name === center.color.name) ||
+                 (right && right.color.name === center.color.name))) {
+                
+                specialTilesToCreate.push({ row, col, type: 'bomb' });
+                matched.add(`${row},${col}`);
+                matched.add(`${row - 1},${col}`);
+                matched.add(`${row + 1},${col}`);
+                if (left && left.color.name === center.color.name) matched.add(`${row},${col - 1}`);
+                if (right && right.color.name === center.color.name) matched.add(`${row},${col + 1}`);
+            }
+            
+            // Horizontal T: center + left + right + (top or bottom)
+            if (left && right && (top || bottom) &&
+                left.color.name === center.color.name &&
+                right.color.name === center.color.name &&
+                ((top && top.color.name === center.color.name) ||
+                 (bottom && bottom.color.name === center.color.name))) {
+                
+                specialTilesToCreate.push({ row, col, type: 'bomb' });
+                matched.add(`${row},${col}`);
+                matched.add(`${row},${col - 1}`);
+                matched.add(`${row},${col + 1}`);
+                if (top && top.color.name === center.color.name) matched.add(`${row - 1},${col}`);
+                if (bottom && bottom.color.name === center.color.name) matched.add(`${row + 1},${col}`);
+            }
+        }
+    }
+    
+    // Assign special tiles to matched positions (prioritize first match location)
+    specialTilesToCreate.forEach(special => {
+        if (matched.has(`${special.row},${special.col}`)) {
+            const tile = getTile(special.row, special.col);
+            if (tile) {
+                tile.special = special.type;
+            }
+        }
+    });
     
     return matched;
 }
@@ -212,20 +304,22 @@ function activateBomb(row, col) {
 }
 
 /**
- * Apply laser effect (clears row or column)
+ * Apply laser effect (clears entire row and column)
  */
-function activateLaser(row, col, direction) {
+function activateLaser(row, col) {
     const cleared = new Set();
     
-    if (direction === 'horizontal') {
-        // Clear entire row
-        for (let c = 0; c < CONFIG.gridSize; c++) {
+    // Clear entire row
+    for (let c = 0; c < CONFIG.gridSize; c++) {
+        if (getTile(row, c)) {
             setTile(row, c, null);
             cleared.add(`${row},${c}`);
         }
-    } else {
-        // Clear entire column
-        for (let r = 0; r < CONFIG.gridSize; r++) {
+    }
+    
+    // Clear entire column
+    for (let r = 0; r < CONFIG.gridSize; r++) {
+        if (getTile(r, col)) {
             setTile(r, col, null);
             cleared.add(`${r},${col}`);
         }
@@ -271,9 +365,7 @@ function activateSpecialTiles(matchedTiles) {
             const cleared = activateBomb(row, col);
             cleared.forEach(p => additionalCleared.add(p));
         } else if (tile && tile.special === 'laser') {
-            // Randomly choose direction
-            const direction = Math.random() < 0.5 ? 'horizontal' : 'vertical';
-            const cleared = activateLaser(row, col, direction);
+            const cleared = activateLaser(row, col);
             cleared.forEach(p => additionalCleared.add(p));
         } else if (tile && tile.special === 'cookie') {
             const cleared = activateCookie(row, col);
@@ -322,7 +414,41 @@ function refillGrid() {
     for (let col = 0; col < CONFIG.gridSize; col++) {
         for (let row = 0; row < CONFIG.gridSize; row++) {
             if (getTile(row, col) === null) {
-                setTile(row, col, createTile());
+                let tile = createTile();
+                
+                // Avoid creating immediate matches
+                let validTile = false;
+                while (!validTile) {
+                    validTile = true;
+                    
+                    // Check horizontal matches
+                    if (col >= 2) {
+                        const left1 = getTile(row, col - 1);
+                        const left2 = getTile(row, col - 2);
+                        if (left1 && left2 && 
+                            left1.color.name === tile.color.name &&
+                            left2.color.name === tile.color.name) {
+                            validTile = false;
+                        }
+                    }
+                    
+                    // Check vertical matches
+                    if (row >= 2) {
+                        const above1 = getTile(row - 1, col);
+                        const above2 = getTile(row - 2, col);
+                        if (above1 && above2 && 
+                            above1.color.name === tile.color.name &&
+                            above2.color.name === tile.color.name) {
+                            validTile = false;
+                        }
+                    }
+                    
+                    if (!validTile) {
+                        tile = createTile();
+                    }
+                }
+                
+                setTile(row, col, tile);
             }
         }
     }
@@ -339,8 +465,9 @@ function processMatches() {
     let totalCleared = new Set();
     let matchesFound = true;
     let cascades = 0;
+    const maxCascades = 10; // Prevent infinite loops
     
-    while (matchesFound) {
+    while (matchesFound && cascades < maxCascades) {
         const matched = findMatches();
         
         if (matched.size === 0) {
@@ -413,7 +540,7 @@ function swapTiles(row1, col1, row2, col2) {
  * Handle tile click
  */
 function onCanvasClick(e) {
-    if (gameState.gameOver || gameState.animating) return;
+    if (gameState.gameMode !== 'playing' || gameState.animating) return;
     
     const canvas = document.getElementById('gameCanvas');
     const rect = canvas.getBoundingClientRect();
@@ -449,14 +576,16 @@ function onCanvasClick(e) {
  * End the game
  */
 function endGame(result) {
-    gameState.gameOver = true;
+    gameState.gameMode = result;
     
     if (result === 'win') {
         document.getElementById('winScore').textContent = gameState.score;
         document.getElementById('winScreen').classList.add('active');
-    } else {
+        document.getElementById('gameArea').style.display = 'none';
+    } else if (result === 'lose') {
         document.getElementById('loseScore').textContent = gameState.score;
         document.getElementById('loseScreen').classList.add('active');
+        document.getElementById('gameArea').style.display = 'none';
     }
 }
 
@@ -469,12 +598,23 @@ function updateUI() {
 }
 
 /**
+ * Start the game from menu
+ */
+function startGame() {
+    gameState.gameMode = 'playing';
+    document.getElementById('playScreen').classList.remove('active');
+    document.getElementById('gameArea').style.display = 'block';
+    
+    reset();
+}
+
+/**
  * Reset and start a new game
  */
 function reset() {
     gameState.score = 0;
     gameState.moves = CONFIG.initialMoves;
-    gameState.gameOver = false;
+    gameState.gameMode = 'playing';
     gameState.animating = false;
     gameState.selectedTile = null;
     
@@ -562,7 +702,8 @@ function drawTile(ctx, x, y, tile, row, col) {
 // ============================================
 
 const game = {
-    reset: reset
+    reset: reset,
+    startGame: startGame
 };
 
 // Start the game when the page loads
@@ -570,9 +711,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameCanvas');
     canvas.addEventListener('click', onCanvasClick);
     
-    initializeGrid();
-    updateUI();
-    render();
+    // Show play screen initially
+    gameState.gameMode = 'menu';
+    document.getElementById('playScreen').classList.add('active');
+    document.getElementById('gameArea').style.display = 'none';
     
     console.log('🎮 Match-3 Game Ready! Click tiles to swap and make matches.');
     console.log('📋 Configuration:', CONFIG);
